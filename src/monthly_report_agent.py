@@ -1,6 +1,6 @@
 import operator
 from typing import Optional, Annotated, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_ollama import ChatOllama
@@ -11,8 +11,38 @@ from lib.daily_work_info import DailyWorkInfo
 
 class MonthlyReportState(BaseModel):
     query: str
+    is_within_target_date_range: bool = False
     extracted_daily_report: str = ""
     daily_work_infos: Annotated[List[DailyWorkInfo], operator.add] = []
+
+
+class WithinTargetDateRangeJudgement(BaseModel):
+    judge: bool = Field(description="判定結果")
+    reason: str = Field(description="判定理由")
+
+
+def determine_within_target_date_range(state: MonthlyReportState) -> dict[str, bool]:
+    model = ChatOpenAI(model="gpt-4o", temperature=0.0)
+
+    prompt = ChatPromptTemplate.from_messages([
+        (
+            "system",
+            "与えられた作業日報が、指定年月のものであるかを判断してください。",
+        ),
+        (
+            "human",
+            """
+            指定年月: 202503
+
+            作業日報:
+            {query}
+            """
+        )
+    ])
+
+    chain = prompt | model.with_structured_output(WithinTargetDateRangeJudgement)
+    result: WithinTargetDateRangeJudgement = chain.invoke({"query": state.query})
+    return {"is_within_target_date_range": result.judge}
 
 
 def extract_daily_report(state: MonthlyReportState) -> dict[str, str]:
@@ -76,10 +106,12 @@ def convert_daily_work_info(state: MonthlyReportState) -> dict[str, List[DailyWo
 def main():
     workflow = StateGraph(MonthlyReportState)
 
+    workflow.add_node("determine_within_target_date_range", determine_within_target_date_range)
     workflow.add_node("extract_daily_report", extract_daily_report)
     workflow.add_node("convert_daily_work_info", convert_daily_work_info)
 
-    workflow.set_entry_point("extract_daily_report")
+    workflow.set_entry_point("determine_within_target_date_range")
+    workflow.add_edge("determine_within_target_date_range", "extract_daily_report")
     workflow.add_edge("extract_daily_report", "convert_daily_work_info")
     workflow.add_edge("convert_daily_work_info", END)
 
