@@ -1,3 +1,4 @@
+import os
 import openpyxl
 import openpyxl.cell
 from pydantic import BaseModel
@@ -17,7 +18,6 @@ example_infos = [
     DailyWorkInfo(date="2025-02-05", start_at="10:00", end_at="20:00", rest_time="1:00", work_details="テストテスト"),
 ]
 
-
 TARGET_MONTH_CELL_POSITION = "J3"
 PARTICIPATING_COMPANY_CELL_POSITION = "J4"
 WORKER_CELL_POSITION = "J6"
@@ -26,34 +26,27 @@ START_AT_COL = "E"
 END_AT_COL = "F"
 REST_TIME_COL = "G"
 WORK_DETAILS_COL = "I"
-MONTHLY_REPORT_TEMPLATE_PATH = "../../data/templates/monthly_work_report_template.xlsx"
+MONTHLY_REPORT_TEMPLATE_PATH = "{data_path}/templates/monthly_work_report_template.xlsx"
 REPORT_SHEET_NAME = "作業報告書"
-MONTHLY_REPORT_OUTPUT_PATH = "../../data/outputs/作業報告書_{worker}_{target_month}.xlsx"
+MONTHLY_REPORT_OUTPUT_PATH = "{data_path}/outputs/作業報告書_{worker}_{target_month}.xlsx"
 
 
 def write_monthly_report(worker: str, participating_company: str, target_month: str, infos: List[DailyWorkInfo]):
-    # テンプレートの年月だけ先に更新して上書き保存
-    # NOTE: 月日を反映させるため、関数をそのまま読み込む必要がある
-    # wb = openpyxl.load_workbook(MONTHLY_REPORT_TEMPLATE_PATH)
-    # ws = wb[REPORT_SHEET_NAME]
+    data_path = os.getenv("ROOT_DIR") + "/data"
+    monthly_report_template_path = MONTHLY_REPORT_TEMPLATE_PATH.format(data_path=data_path)
 
-    # target_month_cell = ws[TARGET_MONTH_CELL_POSITION]
-    # target_month_cell.value = datetime.strptime(target_month, "%Y%m")
-
-    # wb.save(MONTHLY_REPORT_TEMPLATE_PATH)
-
-
-    wb = openpyxl.load_workbook(MONTHLY_REPORT_TEMPLATE_PATH, data_only=True)
+    wb = openpyxl.load_workbook(monthly_report_template_path, data_only=True)
     ws = wb[REPORT_SHEET_NAME]
+
+    target_month_cell = ws[TARGET_MONTH_CELL_POSITION]
+    if target_month_cell.value != datetime.strptime(target_month, "%Y%m"):
+        raise ValueError(f"作業報告書({monthly_report_template_path})の対象年月を更新してください。")
 
     participating_company_cell = ws[PARTICIPATING_COMPANY_CELL_POSITION]
     participating_company_cell.value = participating_company
 
     worker_name_cell = ws[WORKER_CELL_POSITION]
     worker_name_cell.value = worker
-
-    # target_month_cell = ws[TARGET_MONTH_CELL_POSITION]
-    # target_month_cell.value = datetime.strptime(target_month, "%Y%m")
 
     date_col = ws[DATE_COL]
 
@@ -76,7 +69,7 @@ def write_monthly_report(worker: str, participating_company: str, target_month: 
                 work_details_cell = ws[f"{WORK_DETAILS_COL}{date_cell.row}"]
                 work_details_cell.value = info.work_details
 
-    wb.save(MONTHLY_REPORT_OUTPUT_PATH.format(worker=worker, target_month=target_month))
+    wb.save(MONTHLY_REPORT_OUTPUT_PATH.format(data_path=data_path, worker=worker, target_month=target_month))
 
 
 if __name__ == "__main__":
