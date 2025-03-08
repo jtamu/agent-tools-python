@@ -10,11 +10,11 @@ from lib.daily_work_info import DailyWorkInfo
 
 
 class MonthlyReportState(BaseModel):
-    target_year_month: str
-    query: str
-    is_within_target_date_range: bool = False
-    extracted_daily_report: str = ""
-    daily_work_infos: Annotated[List[DailyWorkInfo], operator.add] = []
+    target_year_month: str = Field(description="対象年月")
+    query: str = Field(description="作業日報")
+    is_within_target_date_range: bool = Field(default=False, description="対象年月の範囲内かどうかの判定結果")
+    extracted_daily_report: str = Field(default="", description="抽出された作業日報")
+    daily_work_infos: Annotated[List[DailyWorkInfo], operator.add] = Field(default=[], description="作業日報データのリスト")
 
 
 class WithinTargetDateRangeJudgement(BaseModel):
