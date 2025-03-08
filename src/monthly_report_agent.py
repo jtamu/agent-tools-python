@@ -10,6 +10,7 @@ from lib.daily_work_info import DailyWorkInfo
 
 
 class MonthlyReportState(BaseModel):
+    target_year_month: str
     query: str
     is_within_target_date_range: bool = False
     extracted_daily_report: str = ""
@@ -32,7 +33,7 @@ def determine_within_target_date_range(state: MonthlyReportState) -> dict[str, b
         (
             "human",
             """
-            指定年月: 202503
+            指定年月: {target_year_month}
 
             作業日報:
             {query}
@@ -41,7 +42,10 @@ def determine_within_target_date_range(state: MonthlyReportState) -> dict[str, b
     ])
 
     chain = prompt | model.with_structured_output(WithinTargetDateRangeJudgement)
-    result: WithinTargetDateRangeJudgement = chain.invoke({"query": state.query})
+    result: WithinTargetDateRangeJudgement = chain.invoke({
+        "query": state.query,
+        "target_year_month": state.target_year_month,
+    })
     return {"is_within_target_date_range": result.judge}
 
 
@@ -111,13 +115,22 @@ def main():
     workflow.add_node("convert_daily_work_info", convert_daily_work_info)
 
     workflow.set_entry_point("determine_within_target_date_range")
-    workflow.add_edge("determine_within_target_date_range", "extract_daily_report")
+    workflow.add_conditional_edges(
+        "determine_within_target_date_range",
+        lambda state: state.is_within_target_date_range,
+        {
+            True: "extract_daily_report",
+            False: END,
+        }
+    )
     workflow.add_edge("extract_daily_report", "convert_daily_work_info")
     workflow.add_edge("convert_daily_work_info", END)
 
     compiled = workflow.compile()
 
-    initial_state = MonthlyReportState(query="""
+    initial_state = MonthlyReportState(
+        target_year_month="202503",
+        query="""
         # EXAMPLE日報
 
         日報No.494
@@ -162,7 +175,8 @@ def main():
 
         # **その他**
         * 社内MTG 0.5h
-    """)
+        """
+    )
 
     result = compiled.invoke(initial_state)
     print(result)
