@@ -24,7 +24,7 @@ REPORT_SHEET_NAME = "作業報告書"
 MONTHLY_REPORT_OUTPUT_PATH = "{data_path}/outputs/作業報告書_{worker}_{target_month}.xlsx"
 
 
-def write_monthly_report(worker: str, participating_company: str, target_month: str, infos: List[DailyWorkInfo]):
+def validate_report_within_target_month(target_month: str):
     data_path = os.getenv("ROOT_DIR") + "/data"
     monthly_report_template_path = MONTHLY_REPORT_TEMPLATE_PATH.format(data_path=data_path)
 
@@ -34,6 +34,14 @@ def write_monthly_report(worker: str, participating_company: str, target_month: 
     target_month_cell = ws[TARGET_MONTH_CELL_POSITION]
     if target_month_cell.value != datetime.strptime(target_month, "%Y%m"):
         raise ValueError(f"作業報告書({monthly_report_template_path})の対象年月を更新してください。")
+
+
+def write_monthly_report(worker: str, participating_company: str, target_month: str, infos: List[DailyWorkInfo]):
+    data_path = os.getenv("ROOT_DIR") + "/data"
+    monthly_report_template_path = MONTHLY_REPORT_TEMPLATE_PATH.format(data_path=data_path)
+
+    wb = openpyxl.load_workbook(monthly_report_template_path, data_only=True)
+    ws = wb[REPORT_SHEET_NAME]
 
     participating_company_cell = ws[PARTICIPATING_COMPANY_CELL_POSITION]
     participating_company_cell.value = participating_company

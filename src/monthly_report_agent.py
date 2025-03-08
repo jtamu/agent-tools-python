@@ -1,3 +1,4 @@
+import os
 import operator
 from typing import Optional, Annotated, List
 from pydantic import BaseModel, Field
@@ -6,7 +7,10 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
+from langgraph.graph.graph import CompiledGraph
 from lib.daily_work_info import DailyWorkInfo
+from lib.find_report_files import find_report_files, read_file_contents
+from lib.write_monthly_report import validate_report_within_target_month, write_monthly_report
 
 
 class MonthlyReportState(BaseModel):
@@ -107,7 +111,7 @@ def convert_daily_work_info(state: MonthlyReportState) -> dict[str, List[DailyWo
     return {"daily_work_infos": [convert_result]}
 
 
-def main():
+def compile_workflow() -> CompiledGraph:
     workflow = StateGraph(MonthlyReportState)
 
     workflow.add_node("determine_within_target_date_range", determine_within_target_date_range)
@@ -127,59 +131,29 @@ def main():
     workflow.add_edge("convert_daily_work_info", END)
 
     compiled = workflow.compile()
+    return compiled
 
-    initial_state = MonthlyReportState(
-        target_year_month="202503",
-        query="""
-        # EXAMPLE日報
 
-        日報No.494
+def main():
+    validate_report_within_target_month("202502")
 
-        プロジェクト名：EXAMPLEプロジェクト
-        報告日：2025年03月07日(金)
+    compiled = compile_workflow()
 
-        ## **本日の業務内容**
+    data_path = os.getenv("ROOT_DIR") + "/data"
+    report_files = find_report_files(f"{data_path}/inputs/example/202502")
 
-        * **1. 文言修正**
-        * (実績工数) 2.0h
-        * (作業進捗率)
-        * (作業内容) 文言修正
-        * (所感) ローカル確認まで完了
+    state = None
+    for file in report_files:
+        contents = read_file_contents(file)
+        if not state:
+            state = MonthlyReportState(target_year_month="202502", query=contents)
+        else:
+            state.query = contents
 
-        * **2. APIの設計**
-        * (実績工数) 5.5h
-        * (作業進捗率)
-        * (作業内容) 多言語を考慮した設計
-        * (所感) 一旦言語ごとにCSVを分ける形にした
+        result = compiled.invoke(state)
+        state = MonthlyReportState(**result)
 
-        * **本日の残業予定**
-        * なし
-
-        ## **翌営業日の作業予定**
-
-        * **1. サービスに渡す変数が多すぎるのでDTOにまとめたい**
-        * (予定工数)
-        * (完了目標)
-        * (作業内容) サービスに渡す変数が多すぎるのでDTOにまとめたい
-
-        # **My KPT**
-
-        ## **KEEP(今日の作業でよかったこと/継続して実施していきたいこと)**
-        * 特になし
-
-        ## **PROBLEM(今日の作業の問題点/解決すべきこと)**
-        * チェックボックスはスペースで入力できることを知らなかった
-
-        ## **TRY(翌営業日以降、取り込んでいく作業実行)**
-        * 覚えておく
-
-        # **その他**
-        * 社内MTG 0.5h
-        """
-    )
-
-    result = compiled.invoke(initial_state)
-    print(result)
+    write_monthly_report("山田太郎", "EXAMPLE株式会社", "202502", state.daily_work_infos)
 
 
 if __name__ == "__main__":
