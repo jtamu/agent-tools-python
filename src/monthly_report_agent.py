@@ -1,10 +1,10 @@
 import os
 import operator
-from typing import Optional, Annotated, List
+import argparse
+from typing import Annotated, List
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from langgraph.graph.graph import CompiledGraph
@@ -134,27 +134,37 @@ def compile_workflow() -> CompiledGraph:
     return compiled
 
 
-def main():
-    validate_report_within_target_month("202502")
+def main(worker: str, participating_company: str, target_month: str, input_dir: str = ""):
+    validate_report_within_target_month(target_month)
 
     compiled = compile_workflow()
 
-    data_path = os.getenv("ROOT_DIR") + "/data"
-    report_files = find_report_files(f"{data_path}/inputs/example/202502")
+    input_base_path = os.getenv("ROOT_DIR") + "/data/inputs/"
+    input_path = input_base_path + input_dir
+
+    report_files = find_report_files(input_path)
 
     state = None
     for file in report_files:
         contents = read_file_contents(file)
         if not state:
-            state = MonthlyReportState(target_year_month="202502", query=contents)
+            state = MonthlyReportState(target_year_month=target_month, query=contents)
         else:
             state.query = contents
 
         result = compiled.invoke(state)
         state = MonthlyReportState(**result)
 
-    write_monthly_report("山田太郎", "EXAMPLE株式会社", "202502", state.daily_work_infos)
+    write_monthly_report(worker, participating_company, target_month, state.daily_work_infos)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="月報自動生成エージェント")
+
+    parser.add_argument("-w", "--worker", required=True, help="作業者名")
+    parser.add_argument("-c", "--company", required=True, help="参画企業名")
+    parser.add_argument("-m", "--month", required=True, help="対象年月（例: 202502）")
+    parser.add_argument("-i", "--input", default="", help="入力ディレクトリ（inputsディレクトリからの相対パス）")
+
+    args = parser.parse_args()
+    main(args.worker, args.company, args.month, args.input)
