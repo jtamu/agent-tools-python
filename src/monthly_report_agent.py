@@ -1,4 +1,5 @@
-from typing import Optional
+import operator
+from typing import Optional, Annotated, List
 from pydantic import BaseModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -11,7 +12,7 @@ from lib.daily_work_info import DailyWorkInfo
 class MonthlyReportState(BaseModel):
     query: str
     extracted_daily_report: str = ""
-    daily_work_info: Optional[DailyWorkInfo] = None
+    daily_work_infos: Annotated[List[DailyWorkInfo], operator.add] = []
 
 
 def extract_daily_report(state: MonthlyReportState) -> dict[str, str]:
@@ -55,7 +56,7 @@ def extract_daily_report(state: MonthlyReportState) -> dict[str, str]:
     return {"extracted_daily_report": result}
 
 
-def convert_daily_work_info(state: MonthlyReportState) -> dict[str, DailyWorkInfo]:
+def convert_daily_work_info(state: MonthlyReportState) -> dict[str, List[DailyWorkInfo]]:
     model = ChatOpenAI(model="gpt-4o", temperature=0.0)
 
     convert_prompt = ChatPromptTemplate.from_template("""
@@ -69,7 +70,7 @@ def convert_daily_work_info(state: MonthlyReportState) -> dict[str, DailyWorkInf
 
     convert_chain = convert_prompt | model.with_structured_output(DailyWorkInfo)
     convert_result = convert_chain.invoke({"extracted_data": state.extracted_daily_report})
-    return convert_result
+    return {"daily_work_infos": [convert_result]}
 
 
 def main():
