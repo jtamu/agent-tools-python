@@ -1,17 +1,10 @@
 import os
 import openpyxl
 import openpyxl.cell
-from pydantic import BaseModel
 from datetime import date, datetime
 from typing import List
+from .daily_work_info import DailyWorkInfo
 
-
-class DailyWorkInfo(BaseModel):
-    date: str
-    start_at: str
-    end_at: str
-    rest_time: str
-    work_details: str
 
 example_infos = [
     DailyWorkInfo(date="2025-02-03", start_at="10:00", end_at="20:00", rest_time="1:00", work_details="ほげほげ"),
