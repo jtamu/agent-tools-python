@@ -81,12 +81,12 @@ def extract_daily_report(state: MonthlyReportState) -> dict[str, str]:
         ),
         (
             "human",
-            state.query,
+            "{query}",
         )
     ])
 
     extract_chain = extract_prompt | reasoning_model | StrOutputParser()
-    result = extract_chain.invoke({})
+    result = extract_chain.invoke({"query": state.query})
     return {"extracted_daily_report": result}
 
 
