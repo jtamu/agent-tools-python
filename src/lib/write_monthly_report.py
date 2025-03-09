@@ -6,11 +6,6 @@ from typing import List
 from .daily_work_info import DailyWorkInfo
 
 
-example_infos = [
-    DailyWorkInfo(date="2025-02-03", start_at="10:00", end_at="20:00", rest_time="1:00", work_details="ほげほげ"),
-    DailyWorkInfo(date="2025-02-05", start_at="10:00", end_at="20:00", rest_time="1:00", work_details="テストテスト"),
-]
-
 TARGET_MONTH_CELL_POSITION = "J3"
 PARTICIPATING_COMPANY_CELL_POSITION = "J4"
 WORKER_CELL_POSITION = "J6"
@@ -19,6 +14,7 @@ START_AT_COL = "E"
 END_AT_COL = "F"
 REST_TIME_COL = "G"
 WORK_DETAILS_COL = "I"
+NOTES_CELL_POSITION = "B45"
 MONTHLY_REPORT_TEMPLATE_PATH = "{data_path}/templates/monthly_work_report_template.xlsx"
 REPORT_SHEET_NAME = "作業報告書"
 MONTHLY_REPORT_OUTPUT_PATH = "{data_path}/outputs/作業報告書_{worker}_{target_month}.xlsx"
@@ -70,8 +66,8 @@ def write_monthly_report(worker: str, participating_company: str, target_month: 
                 work_details_cell = ws[f"{WORK_DETAILS_COL}{date_cell.row}"]
                 work_details_cell.value = info.work_details
 
+    notes = "\n".join(["\n".join(info.notes) for info in infos])
+    notes_col = ws[NOTES_CELL_POSITION]
+    notes_col.value = notes
+
     wb.save(MONTHLY_REPORT_OUTPUT_PATH.format(data_path=data_path, worker=worker, target_month=target_month))
-
-
-if __name__ == "__main__":
-    write_monthly_report("山田太郎", "EXAMPLE株式会社", "202502", example_infos)

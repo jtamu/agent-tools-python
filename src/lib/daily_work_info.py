@@ -1,3 +1,4 @@
+from typing import List
 from pydantic import BaseModel, Field
 
 
@@ -7,3 +8,4 @@ class DailyWorkInfo(BaseModel):
     end_at: str = Field(description="終了時刻")
     rest_time: str = Field(description="休憩時間")
     work_details: str = Field(description="業務内容")
+    notes: List[str] = Field(description="その他")

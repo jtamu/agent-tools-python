@@ -79,6 +79,9 @@ def extract_daily_report(state: MonthlyReportState) -> dict[str, str]:
                 - 開始時刻から3.と6.の合計を足して算出してください。
             8. 業務内容
                 - 「本日の業務内容」に記載の業務内容のうち、最も実績工数が大きいもの
+            9. その他
+                - 「社内MTG」などの社内業務の記載がある場合は、その内容と時間を以下の形式で記載してください。
+                    - "2/10 (月): 社内MTG (1.5h)"
 
             注意点:
             - 「本日の業務内容」には、複数の項目が記載されている場合があるため、見落とさないよう注意してください。"""
@@ -101,6 +104,7 @@ def convert_daily_work_info(state: MonthlyReportState) -> dict[str, List[DailyWo
     与えられた業務日報の抽出データから、適切なフォーマットに変換してください。
     注意点:
     - 業務内容に時間の情報は含めないでください。
+    - その他は受け取った文字列を省略せずにそのまま返してください。
 
     抽出データ:
     {extracted_data}
@@ -155,7 +159,9 @@ def main(worker: str, participating_company: str, target_month: str, input_dir: 
         result = compiled.invoke(state)
         state = MonthlyReportState(**result)
 
-    write_monthly_report(worker, participating_company, target_month, state.daily_work_infos)
+    sorted_infos = sorted(state.daily_work_infos, key=lambda info: info.date)
+
+    write_monthly_report(worker, participating_company, target_month, sorted_infos)
 
 
 if __name__ == "__main__":
