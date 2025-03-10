@@ -13,6 +13,7 @@ DATE_COL = "B"
 START_AT_COL = "E"
 END_AT_COL = "F"
 REST_TIME_COL = "G"
+WORK_TIME_COL = "H"
 WORK_DETAILS_COL = "I"
 NOTES_CELL_POSITION = "B45"
 MONTHLY_REPORT_TEMPLATE_PATH = "{data_path}/templates/monthly_work_report_template.xlsx"
@@ -63,11 +64,17 @@ def write_monthly_report(worker: str, participating_company: str, target_month: 
                 rest_time_cell = ws[f"{REST_TIME_COL}{date_cell.row}"]
                 rest_time_cell.value = info.rest_time
 
+                work_time_cell = ws[f"{WORK_TIME_COL}{date_cell.row}"]
+                work_time_cell.value = info.work_time
+
                 work_details_cell = ws[f"{WORK_DETAILS_COL}{date_cell.row}"]
                 work_details_cell.value = info.work_details
 
-    notes = "\n".join(["\n".join(info.notes) for info in infos])
+    notes_list = sum([info.notes for info in infos], [])
+    notes = "\n".join(notes_list)
     notes_col = ws[NOTES_CELL_POSITION]
     notes_col.value = notes
 
-    wb.save(MONTHLY_REPORT_OUTPUT_PATH.format(data_path=data_path, worker=worker, target_month=target_month))
+    output_path = MONTHLY_REPORT_OUTPUT_PATH.format(data_path=data_path, worker=worker, target_month=target_month)
+    wb.save(output_path)
+    print(f"作業報告書を出力しました: {output_path}")
