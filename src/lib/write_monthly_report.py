@@ -4,6 +4,7 @@ import openpyxl.cell
 from datetime import date, datetime
 from typing import List
 from .daily_work_info import DailyWorkInfo
+from .time import calculate_total_time
 
 
 TARGET_MONTH_CELL_POSITION = "J3"
@@ -15,6 +16,8 @@ END_AT_COL = "F"
 REST_TIME_COL = "G"
 WORK_TIME_COL = "H"
 WORK_DETAILS_COL = "I"
+WORK_DAY_COUNT_CELL_POSITION = "E42"
+TOTAL_WORK_TIME_CELL_POSITION = "H42"
 NOTES_CELL_POSITION = "B45"
 MONTHLY_REPORT_TEMPLATE_PATH = "{data_path}/templates/monthly_work_report_template.xlsx"
 REPORT_SHEET_NAME = "作業報告書"
@@ -74,6 +77,14 @@ def write_monthly_report(worker: str, participating_company: str, target_month: 
     notes = "\n".join(notes_list)
     notes_col = ws[NOTES_CELL_POSITION]
     notes_col.value = notes
+
+    work_day_count = len(infos)
+    work_day_count_col = ws[WORK_DAY_COUNT_CELL_POSITION]
+    work_day_count_col.value = work_day_count
+
+    total_work_time = calculate_total_time([info.work_time for info in infos])
+    total_work_time_col = ws[TOTAL_WORK_TIME_CELL_POSITION]
+    total_work_time_col.value = total_work_time
 
     output_path = MONTHLY_REPORT_OUTPUT_PATH.format(data_path=data_path, worker=worker, target_month=target_month)
     wb.save(output_path)
